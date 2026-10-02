@@ -38,9 +38,54 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Serve static assets from both public directory and project root
+// Fix Vercel rewrites: if Vercel rewrote /api/... to /api/index.js or /index.js, restore the real URL
+app.use((req, res, next) => {
+  const matched = req.headers['x-matched-path'];
+  if (matched && (req.url === '/api/index.js' || req.url === '/index.js' || req.url.startsWith('/api/index.js?'))) {
+    req.url = matched;
+  }
+  next();
+});
+
+// Serve static assets from public, root, css, and js directories
+app.use('/css', express.static(path.join(__dirname, 'css')));
+app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
+
+// Direct fallbacks for CSS and JS assets (handles both root and subfolder paths)
+app.get(['/style.css', '/css/style.css'], (req, res) => {
+  const candidates = [
+    path.join(__dirname, 'style.css'),
+    path.join(__dirname, 'css', 'style.css'),
+    path.join(__dirname, 'public', 'css', 'style.css'),
+    path.join(__dirname, 'public', 'style.css')
+  ];
+  const found = candidates.find(p => fs.existsSync(p));
+  if (found) {
+    res.setHeader('Content-Type', 'text/css');
+    return res.sendFile(found);
+  }
+  res.status(404).send('/* CSS Not Found */');
+});
+
+app.get(['/:script.js', '/js/:script.js'], (req, res, next) => {
+  const scriptName = req.params.script;
+  if (['app', 'analytics', 'audio', 'notifications'].includes(scriptName)) {
+    const candidates = [
+      path.join(__dirname, `${scriptName}.js`),
+      path.join(__dirname, 'js', `${scriptName}.js`),
+      path.join(__dirname, 'public', 'js', `${scriptName}.js`),
+      path.join(__dirname, 'public', `${scriptName}.js`)
+    ];
+    const found = candidates.find(p => fs.existsSync(p));
+    if (found) {
+      res.setHeader('Content-Type', 'application/javascript');
+      return res.sendFile(found);
+    }
+  }
+  next();
+});
 
 // Ensure database is initialized before any API request is handled
 let dbInitPromise = null;
