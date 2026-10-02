@@ -38,14 +38,27 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Fix Vercel rewrites: if Vercel rewrote /api/... to /api/index.js or /index.js, restore the real URL
+// Fix Vercel rewrites: restore the intended API endpoint path
 app.use((req, res, next) => {
-  const matched = req.headers['x-matched-path'];
-  if (matched && (req.url === '/api/index.js' || req.url === '/index.js' || req.url.startsWith('/api/index.js?'))) {
-    req.url = matched;
+  // 1. If passed via query param ?path=...
+  if (req.query && req.query.path) {
+    const p = req.query.path.startsWith('/') ? req.query.path : '/' + req.query.path;
+    req.url = '/api' + p;
+  }
+  // 2. If forwarded with x-matched-path header
+  else if (req.headers['x-matched-path']) {
+    const matched = req.headers['x-matched-path'];
+    if (matched.startsWith('/api')) {
+      req.url = matched;
+    }
+  }
+  // 3. If exact /api/index.js or /index.js, default to settings or health check
+  else if (req.url === '/api/index.js' || req.url === '/index.js') {
+    req.url = '/api/settings';
   }
   next();
 });
+
 
 // Serve static assets from public, root, css, and js directories
 app.use('/css', express.static(path.join(__dirname, 'css')));

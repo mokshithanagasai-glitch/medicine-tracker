@@ -65,17 +65,29 @@ async function checkBackendHealth() {
     if (banner) banner.classList.add('hidden');
   } catch (err) {
     if (banner) {
+      const isCloud = window.location.hostname.includes('vercel.app') || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'file:');
       banner.classList.remove('hidden');
-      banner.innerHTML = `
-        <div class="alert-banner-content" style="color: #fca5a5;">
-          <span class="alert-icon">⚠️</span>
-          <div>
-            <strong>Backend Connection Notice:</strong> Unable to connect to the MediSync server at <code>http://localhost:3000</code>.
-            Please ensure you have run <code>npm start</code> or <code>node server.js</code> in your terminal and open
-            <a href="http://localhost:3000" style="color: #60a5fa; text-decoration: underline; font-weight: 700;">http://localhost:3000</a> in your browser.
+      if (isCloud) {
+        banner.innerHTML = `
+          <div class="alert-banner-content" style="color: #fde047;">
+            <span class="alert-icon">⚡</span>
+            <div>
+              <strong>Cloud Sync Notice:</strong> Connecting to cloud API. If this persists, ensure <code>server.js</code> and <code>vercel.json</code> are committed to your repository.
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      } else {
+        banner.innerHTML = `
+          <div class="alert-banner-content" style="color: #fca5a5;">
+            <span class="alert-icon">⚠️</span>
+            <div>
+              <strong>Backend Connection Notice:</strong> Unable to connect to the MediSync server at <code>http://localhost:3000</code>.
+              Please ensure you have run <code>npm start</code> or <code>node server.js</code> in your terminal and open
+              <a href="http://localhost:3000" style="color: #60a5fa; text-decoration: underline; font-weight: 700;">http://localhost:3000</a> in your browser.
+            </div>
+          </div>
+        `;
+      }
     }
   }
 }
